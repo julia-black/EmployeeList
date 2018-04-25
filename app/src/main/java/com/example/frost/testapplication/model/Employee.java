@@ -18,6 +18,7 @@ public class Employee {
     private Bitmap mPhoto;
 
 
+
     public Employee(int id, String mSurName, String mName, String mPatronymic, Date mBirthday, Bitmap mPhoto) {
         this.id = id;
         this.mSurName = mSurName;
@@ -59,6 +60,7 @@ public class Employee {
     }
 
     public Employee() {
+        this.id = -1;
     }
 
     public String getmSurName() {

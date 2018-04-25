@@ -28,12 +28,21 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
 
     private static final String LOG_TAG = "TestApp " + MainActivity.class.getSimpleName();
     private List<Employee> mEmployeeList;
-    private Employee mCurrentEmployee;
+    private Employee mCurrentEmployee = new Employee();
     private boolean mCurrentFlagNew = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i(LOG_TAG, "OnCreate");
+        if (savedInstanceState != null) {
+            int id = savedInstanceState.getInt("employeeId");
+            Log.i(LOG_TAG, id + "");
+            mCurrentEmployee = getEmployeeById(id);
+            Log.i(LOG_TAG, mCurrentEmployee.toString());
+            mCurrentFlagNew = savedInstanceState.getBoolean("flagNew");
+            Log.i(LOG_TAG, "" + mCurrentFlagNew);
+        }
         setContentView(R.layout.activity_main);
 
         getSupportActionBar().setTitle("Список сотрудников");
@@ -42,14 +51,44 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
 
         //initEmployeeList();
         displayDatabaseInfo();
+
         ListEmployeeFragment listEmployeeFragment = new ListEmployeeFragment();
         FragmentManager fragmentManager = getFragmentManager();
         fragmentManager.beginTransaction()
                 .add(R.id.container, listEmployeeFragment)
                 .show(listEmployeeFragment)
                 .commit();
+
     }
 
+    private Employee getEmployeeById(int id) {
+        Employee employee = new Employee();
+        SQLiteDatabase db = new EmployeeDbHelper(getApplicationContext()).getReadableDatabase();
+        String selection = "_id = ?";
+        String[] selectionArgs = new String[]{String.valueOf(id)};
+        Cursor cursor = db.query(EmployeeDbContract.TABLE_NAME, null, selection, selectionArgs, null, null, null);
+        if (cursor.moveToFirst()) {
+            employee.setId(cursor.getInt(0));
+            employee.setmSurName(cursor.getString(1));
+            employee.setmName(cursor.getString(2));
+            employee.setmPatronymic(cursor.getString(3));
+            // employee.setmPhoto(DbBitmapUtility.getImage(cursor.getBlob(cursor.getColumnIndex(EmployeeDbContract.COLUMN_PHOTO))));
+            employee.setmPhoto(DbBitmapUtility.convertToBitmap(cursor.getString(cursor.getColumnIndex(EmployeeDbContract.COLUMN_PHOTO))));
+            int idxBirthday = cursor.getColumnIndex(EmployeeDbContract.COLUMN_BIRTHDAY);
+
+            SimpleDateFormat parseFormat =
+                    new SimpleDateFormat("EEE MMM dd HH:mm:ss zzz yyyy", Locale.ENGLISH);
+
+            Date newDate = null;
+            try {
+                newDate = parseFormat.parse(cursor.getString(idxBirthday));
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+            employee.setmBirthday(newDate);
+        }
+        return employee;
+    }
 
     private void initEmployeeList() {
         mEmployeeList = new ArrayList<>();
@@ -185,12 +224,19 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
         values.put(EmployeeDbContract.COLUMN_NAME, newEmployee.getmName());
         values.put(EmployeeDbContract.COLUMN_PATRONYMIC, newEmployee.getmPatronymic());
         values.put(EmployeeDbContract.COLUMN_BIRTHDAY, newEmployee.getmBirthday().toString());
-        //values.put(EmployeeDbContract.COLUMN_PHOTO, DbBitmapUtility.getBytes(newEmployee.getmPhoto()));
         values.put(EmployeeDbContract.COLUMN_PHOTO, DbBitmapUtility.convertToBase64(newEmployee.getmPhoto()));
         Log.i(LOG_TAG, "adding " + newEmployee);
         Log.i(LOG_TAG, values.toString());
         long newRowId = db.insert(EmployeeDbContract.TABLE_NAME, null, values);
         Log.i(LOG_TAG, newRowId + "");
         displayDatabaseInfo();
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        Log.i(LOG_TAG, "mCurrentEmployee: " + mCurrentEmployee);
+        outState.putInt("employeeId", mCurrentEmployee.getId());
+        outState.putBoolean("flagNew", mCurrentFlagNew);
     }
 }

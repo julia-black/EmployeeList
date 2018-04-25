@@ -28,6 +28,8 @@ import com.example.frost.testapplication.model.Employee;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
+import static android.app.Activity.RESULT_OK;
+
 @SuppressLint("ValidFragment")
 public class EmployeeFragment extends Fragment {
 
@@ -54,8 +56,8 @@ public class EmployeeFragment extends Fragment {
     @BindView(R.id.patronymic_text)
     EditText mPatronymicText;
 
-    private boolean mFlagNew;
-    private Employee mEmployee;
+    private boolean mFlagNew = true;
+    private Employee mEmployee = new Employee();
     private Bitmap thumbnailBitmap;
 
     private final int CAMERA_RESULT = 0;
@@ -71,9 +73,7 @@ public class EmployeeFragment extends Fragment {
     }
 
     public EmployeeFragment() {
-        Listener l = (Listener) getActivity();
-        mEmployee = l.getCurrentEmployee();
-        mFlagNew = l.getCurrentFlagNew();
+
     }
 
     @SuppressLint("ValidFragment")
@@ -93,6 +93,11 @@ public class EmployeeFragment extends Fragment {
     @Override
     public View onCreateView(LayoutInflater inflater, @Nullable ViewGroup container,
                              Bundle savedInstanceState) {
+
+        Listener l = (Listener) getActivity();
+        mEmployee = l.getCurrentEmployee();
+        mFlagNew = l.getCurrentFlagNew();
+
         View view = inflater.inflate(R.layout.employee_fragment,
                 container, false);
         ButterKnife.bind(this, view);
@@ -162,6 +167,7 @@ public class EmployeeFragment extends Fragment {
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
+        if (resultCode != RESULT_OK) return;
         if (requestCode == CAMERA_RESULT) {
             thumbnailBitmap = (Bitmap) data.getExtras().get("data");
             mPhoto.setImageBitmap(thumbnailBitmap);
