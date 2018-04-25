@@ -9,8 +9,7 @@
         android:id="@+id/recycler_view"
         android:layout_width="match_parent"
         android:layout_height="430dp"
-        android:scrollbars="vertical"
-        ></android.support.v7.widget.RecyclerView>
+        android:scrollbars="vertical"></android.support.v7.widget.RecyclerView>
 
     <Button
         android:id="@+id/button_add"

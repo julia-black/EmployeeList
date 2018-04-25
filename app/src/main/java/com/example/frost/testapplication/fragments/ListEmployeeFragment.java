@@ -12,6 +12,7 @@ import android.util.Log;
 import android.view.ContextMenu;
 import android.view.GestureDetector;
 import android.view.LayoutInflater;
+import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -39,7 +40,10 @@ public class ListEmployeeFragment extends Fragment {
     @BindView(R.id.button_add)
     Button buttonAdd;
 
+    RecyclerView.Adapter adapter;
+
     private Listener mListener;
+
 
     public interface Listener {
         void onEmployeeClicked(Employee employee);
@@ -48,10 +52,6 @@ public class ListEmployeeFragment extends Fragment {
 
         void deleteEmployee(Employee employee);
 
-       // Employee getCurrentEmployee();
-//
-       // boolean getCurrentFlagNew();
-//
         void setCurrentEmployee(Employee employee);
 
         void setCurrentFlagNew(boolean flag);
@@ -102,12 +102,20 @@ public class ListEmployeeFragment extends Fragment {
                 .commit();
     }
 
+    public RecyclerView.Adapter getAdapter() {
+        return adapter;
+    }
+
+    public void setAdapter(RecyclerView.Adapter adapter) {
+        this.adapter = adapter;
+    }
+
     private void initRecycleView() {
         mRecyclerView.setHasFixedSize(true);
         RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(getActivity());
         mRecyclerView.setLayoutManager(layoutManager);
 
-        RecyclerView.Adapter adapter = new ViewAdapter(this.getActivity(), mListener.getEmployeeList());
+        adapter = new ViewAdapter(this.getActivity(), mListener.getEmployeeList());
         mRecyclerView.setAdapter(adapter);
 
         mRecyclerView.addOnItemTouchListener(new RecyclerView.OnItemTouchListener() {

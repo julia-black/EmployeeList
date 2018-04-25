@@ -40,7 +40,8 @@ public class EmployeeFragment extends Fragment {
     @BindView(R.id.button_photo)
     Button mButtonPhoto;
 
-    private static int idx;
+    private static int idx = 0;
+
     @BindView(R.id.button_ok)
     Button mButtonOk;
 

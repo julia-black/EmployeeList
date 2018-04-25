@@ -105,17 +105,6 @@ public class Employee {
         return "Дата рождения: " + simpleDateFormat.format(mBirthday);
     }
 
-   // @Override
-   // public String toString() {
-   //     return "Employee{" +
-   //             "id=" + id +
-   //             ", mSurName='" + mSurName + '\'' +
-   //             ", mName='" + mName + '\'' +
-   //             ", mPatronymic='" + mPatronymic + '\'' +
-   //             ", mBirthday=" + mBirthday +
-   //             '}';
-   // }
-
     @Override
     public String toString() {
         return "Employee{" +

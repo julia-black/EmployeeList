@@ -2,13 +2,15 @@ package com.example.frost.testapplication;
 
 import android.app.FragmentManager;
 import android.content.ContentValues;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
-import android.graphics.Bitmap;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 
 import com.example.frost.testapplication.db.DbBitmapUtility;
 import com.example.frost.testapplication.db.EmployeeDbContract;
@@ -17,6 +19,7 @@ import com.example.frost.testapplication.fragments.EmployeeFragment;
 import com.example.frost.testapplication.fragments.ListEmployeeFragment;
 import com.example.frost.testapplication.model.Employee;
 
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -24,12 +27,21 @@ import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
+import ru.dubki.mc.Mc;
+
 public class MainActivity extends AppCompatActivity implements ListEmployeeFragment.Listener, EmployeeFragment.Listener {
 
     private static final String LOG_TAG = "TestApp " + MainActivity.class.getSimpleName();
     private List<Employee> mEmployeeList;
     private Employee mCurrentEmployee = new Employee();
     private boolean mCurrentFlagNew = false;
+
+    private ServiceConnection mServiceConnection;
+
+    ListEmployeeFragment listEmployeeFragment;
+   // private DataService mService;
+    private Intent mIntent;
+    private boolean mBound;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -47,18 +59,35 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
 
         getSupportActionBar().setTitle("Список сотрудников");
 
-        // getEmployeeInDB();
-
-        //initEmployeeList();
         displayDatabaseInfo();
 
-        ListEmployeeFragment listEmployeeFragment = new ListEmployeeFragment();
+       listEmployeeFragment = new ListEmployeeFragment();
         FragmentManager fragmentManager = getFragmentManager();
         fragmentManager.beginTransaction()
                 .add(R.id.container, listEmployeeFragment)
                 .show(listEmployeeFragment)
                 .commit();
 
+       // mIntent = new Intent(this, DataService.class);
+       // mServiceConnection = new ServiceConnection() {
+       //     public void onServiceConnected(ComponentName name, IBinder binder) {
+       //         Log.d(LOG_TAG, "onServiceConnected");
+       //         mService = ((DataService.DataBinder) binder).getService();
+       //         mEmployeeList = mService.getmEmployeeList();
+       //         Log.d(LOG_TAG, "mEmpl");
+       //         clearEmployees();
+       //         loadInSQLite(mEmployeeList);
+       //        // stopService(mIntent);
+       //         mBound = true;
+       //     }
+       //     public void onServiceDisconnected(ComponentName name) {
+       //         Log.d(LOG_TAG, "onServiceDisconnected");
+       //         mBound = false;
+       //     }
+       // };
+//
+       // startService(mIntent);
+       // bindService(mIntent, mServiceConnection, 0);
     }
 
     private Employee getEmployeeById(int id) {
@@ -72,7 +101,6 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
             employee.setmSurName(cursor.getString(1));
             employee.setmName(cursor.getString(2));
             employee.setmPatronymic(cursor.getString(3));
-            // employee.setmPhoto(DbBitmapUtility.getImage(cursor.getBlob(cursor.getColumnIndex(EmployeeDbContract.COLUMN_PHOTO))));
             employee.setmPhoto(DbBitmapUtility.convertToBitmap(cursor.getString(cursor.getColumnIndex(EmployeeDbContract.COLUMN_PHOTO))));
             int idxBirthday = cursor.getColumnIndex(EmployeeDbContract.COLUMN_BIRTHDAY);
 
@@ -194,7 +222,6 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
                 employee.setmSurName(cursor.getString(1));
                 employee.setmName(cursor.getString(2));
                 employee.setmPatronymic(cursor.getString(3));
-                // employee.setmPhoto(DbBitmapUtility.getImage(cursor.getBlob(cursor.getColumnIndex(EmployeeDbContract.COLUMN_PHOTO))));
                 employee.setmPhoto(DbBitmapUtility.convertToBitmap(cursor.getString(cursor.getColumnIndex(EmployeeDbContract.COLUMN_PHOTO))));
                 int idxBirthday = cursor.getColumnIndex(EmployeeDbContract.COLUMN_BIRTHDAY);
 
@@ -233,10 +260,191 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
     }
 
     @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.bar_menu, menu);
+        return true;
+    }
+
+    @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
         Log.i(LOG_TAG, "mCurrentEmployee: " + mCurrentEmployee);
         outState.putInt("employeeId", mCurrentEmployee.getId());
         outState.putBoolean("flagNew", mCurrentFlagNew);
+    }
+
+
+    public void upload() {
+        Log.i(LOG_TAG, "upload");
+        ArrayList<String> in = new ArrayList<>();
+        Mc mc = new Mc(getApplicationContext());
+        try {
+            mc.connect("192.168.250.125", "6569", "10", "GOR", "DDD");
+            mc.run("GETEM^TEMP", in, null, null);
+            Log.d(LOG_TAG, "Ret: " + mc.outRet);
+            Log.d(LOG_TAG, "Out: " + mc.outArray);
+            mEmployeeList.clear();
+            mEmployeeList.addAll(parseEmployeesToString(mc.outArray));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        clearEmployees();
+        loadInSQLite(mEmployeeList);
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                listEmployeeFragment.getAdapter().notifyDataSetChanged();
+            }
+        });
+    }
+
+    private List<Employee> parseEmployeesToString(ArrayList<String> strings) {
+        List<Employee> employeeList = new ArrayList<>();
+        for (String s : strings) {
+            String[] str = s.split("\\|");
+            String[] fullName = str[1].split("\\s");
+
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat();
+            simpleDateFormat.applyPattern("dd.MM.yyyy");
+            Date newDate = new Date();
+            try {
+                newDate = simpleDateFormat.parse(str[2]);
+            } catch (ParseException e) {
+                e.printStackTrace();
+            }
+
+            Employee employee = new Employee(Integer.parseInt(str[0]), fullName[0], fullName[1], fullName[2], newDate, null);
+            employeeList.add(employee);
+            Log.i(LOG_TAG, employee.toString());
+
+        }
+       // clearEmployees();
+       // loadInSQLite(employeeList);
+        return employeeList;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.upload:
+
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        upload();
+                    }
+                }).start();
+
+               // mIntent = new Intent(this, DataService.class);
+               // mServiceConnection = new ServiceConnection() {
+               //     public void onServiceConnected(ComponentName name, IBinder binder) {
+               //         Log.d(LOG_TAG, "onServiceConnected");
+               //         mService = ((DataService.DataBinder) binder).getService();
+               //         mEmployeeList = mService.getmEmployeeList();
+               //         Log.d(LOG_TAG, "mEmpl");
+               //         clearEmployees();
+               //         loadInSQLite(mEmployeeList);
+               //         mBound = true;
+               //     }
+//
+               //     public void onServiceDisconnected(ComponentName name) {
+               //         Log.d(LOG_TAG, "onServiceDisconnected");
+               //         mBound = false;
+               //     }
+               // };
+               // mIntent = new Intent(this, DataService.class);
+              // mServiceConnection = new ServiceConnection() {
+              //     public void onServiceConnected(ComponentName name, IBinder binder) {
+              //         Log.d(LOG_TAG, "onServiceConnected");
+              //         mService = ((DataService.DataBinder) binder).getService();
+              //         mEmployeeList = mService.getmEmployeeList();
+              //         Log.d(LOG_TAG, "mEmpl");
+              //         clearEmployees();
+              //         loadInSQLite(mEmployeeList);
+              //         mBound = true;
+              //     }
+
+              //     public void onServiceDisconnected(ComponentName name) {
+              //         Log.d(LOG_TAG, "onServiceDisconnected");
+              //         mBound = false;
+              //     }
+              // };
+
+             //   startService(mIntent);
+             //   bindService(mIntent, mServiceConnection, 0);
+
+                return true;
+
+            //case R.id.load:
+            //    loadData();
+            //    return true;
+        }
+        return (super.onOptionsItemSelected(item));
+    }
+
+    private void loadData() {
+        Log.i(LOG_TAG, "load");
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        Log.i(LOG_TAG, "onNewIntent");
+    }
+
+    private void clearEmployees() {
+        SQLiteDatabase db = new EmployeeDbHelper(getApplicationContext()).getWritableDatabase();
+        int clearCount = db.delete(EmployeeDbContract.TABLE_NAME, null, null);
+
+    }
+
+    private void loadInSQLite(List<Employee> employeeList) {
+        SQLiteDatabase db = new EmployeeDbHelper(getApplicationContext()).getWritableDatabase();
+
+        for (Employee newEmployee : employeeList) {
+            ContentValues values = new ContentValues();
+            values.put(EmployeeDbContract._ID, newEmployee.getId());
+            values.put(EmployeeDbContract.COLUMN_SURNAME, newEmployee.getmSurName());
+            values.put(EmployeeDbContract.COLUMN_NAME, newEmployee.getmName());
+            values.put(EmployeeDbContract.COLUMN_PATRONYMIC, newEmployee.getmPatronymic());
+            values.put(EmployeeDbContract.COLUMN_BIRTHDAY, newEmployee.getmBirthday().toString());
+            values.put(EmployeeDbContract.COLUMN_PHOTO, DbBitmapUtility.convertToBase64(newEmployee.getmPhoto()));
+            long newRowId = db.insert(EmployeeDbContract.TABLE_NAME, null, values);
+        }
+        displayDatabaseInfo();
+
+      //  this.recreate();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        Log.i(LOG_TAG, "onDestroy");
+       //if (mBound) {
+       //    unbindService(mServiceConnection);
+       //    mBound = false;
+       //}
+    }
+
+    @Override
+    protected void onStart() {
+        Log.i(LOG_TAG, "onDestroy");
+        super.onStart();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        //if (!mBound) {
+        //    bindService(mIntent, mServiceConnection, 0);
+        //    mBound = true;
+        //}
+        Log.i(LOG_TAG, "onResume");
+    }
+
+    private void showInLogString(String[] strings) {
+        for (String str : strings) {
+            Log.i(LOG_TAG, str);
+        }
     }
 }
