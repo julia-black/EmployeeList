@@ -5,10 +5,10 @@
     <item
         android:id="@+id/load"
         android:icon="@android:drawable/ic_dialog_info"
-        android:title="Загрузить в БД"
+        android:title="Загрузить из БД"
         app:showAsAction="never"></item>
     <item
         android:id="@+id/upload"
-        android:title="Выгрузить из БД"
+        android:title="Выгрузить в БД"
         app:showAsAction="never"></item>
 </menu>

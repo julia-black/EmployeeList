@@ -32,16 +32,11 @@ import ru.dubki.mc.Mc;
 public class MainActivity extends AppCompatActivity implements ListEmployeeFragment.Listener, EmployeeFragment.Listener {
 
     private static final String LOG_TAG = "TestApp " + MainActivity.class.getSimpleName();
-    private List<Employee> mEmployeeList;
+    private List<Employee> mEmployeeList = new ArrayList<>();
     private Employee mCurrentEmployee = new Employee();
     private boolean mCurrentFlagNew = false;
 
-    private ServiceConnection mServiceConnection;
-
     ListEmployeeFragment listEmployeeFragment;
-   // private DataService mService;
-    private Intent mIntent;
-    private boolean mBound;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -61,33 +56,12 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
 
         displayDatabaseInfo();
 
-       listEmployeeFragment = new ListEmployeeFragment();
+        listEmployeeFragment = new ListEmployeeFragment();
         FragmentManager fragmentManager = getFragmentManager();
         fragmentManager.beginTransaction()
                 .add(R.id.container, listEmployeeFragment)
                 .show(listEmployeeFragment)
                 .commit();
-
-       // mIntent = new Intent(this, DataService.class);
-       // mServiceConnection = new ServiceConnection() {
-       //     public void onServiceConnected(ComponentName name, IBinder binder) {
-       //         Log.d(LOG_TAG, "onServiceConnected");
-       //         mService = ((DataService.DataBinder) binder).getService();
-       //         mEmployeeList = mService.getmEmployeeList();
-       //         Log.d(LOG_TAG, "mEmpl");
-       //         clearEmployees();
-       //         loadInSQLite(mEmployeeList);
-       //        // stopService(mIntent);
-       //         mBound = true;
-       //     }
-       //     public void onServiceDisconnected(ComponentName name) {
-       //         Log.d(LOG_TAG, "onServiceDisconnected");
-       //         mBound = false;
-       //     }
-       // };
-//
-       // startService(mIntent);
-       // bindService(mIntent, mServiceConnection, 0);
     }
 
     private Employee getEmployeeById(int id) {
@@ -238,8 +212,10 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
             cursor.close();
             db.close();
         }
-        mEmployeeList = res;
-        Log.i(LOG_TAG, res.toString());
+        // mEmployeeList = res;
+        mEmployeeList.clear();
+        mEmployeeList.addAll(res);
+
         Log.i(LOG_TAG, res.toString());
     }
 
@@ -274,8 +250,8 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
     }
 
 
-    public void upload() {
-        Log.i(LOG_TAG, "upload");
+    public void loadOfDB() {
+        Log.i(LOG_TAG, "load");
         ArrayList<String> in = new ArrayList<>();
         Mc mc = new Mc(getApplicationContext());
         try {
@@ -284,7 +260,7 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
             Log.d(LOG_TAG, "Ret: " + mc.outRet);
             Log.d(LOG_TAG, "Out: " + mc.outArray);
             mEmployeeList.clear();
-            mEmployeeList.addAll(parseEmployeesToString(mc.outArray));
+            mEmployeeList.addAll(parseStringsToEmployees(mc.outArray));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -298,7 +274,35 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
         });
     }
 
-    private List<Employee> parseEmployeesToString(ArrayList<String> strings) {
+    private ArrayList<String> parseEmployeesToStrings(List<Employee> employeeList) {
+
+        ArrayList<String> strings = new ArrayList<>();
+        for(Employee employee : employeeList){
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat();
+            simpleDateFormat.applyPattern("dd.MM.yyyy");
+            String bd = simpleDateFormat.format(employee.getmBirthday());
+            strings.add(employee.getId()+"|"+employee.getFullName()+"|"+bd);
+        }
+        return strings;
+    }
+
+    private void uploadInDB() {
+        Log.i(LOG_TAG, "upload");
+        ArrayList<String> in = new ArrayList<>();
+
+        in.addAll(parseEmployeesToStrings(mEmployeeList));
+        Mc mc = new Mc(getApplicationContext());
+        try {
+            mc.connect("192.168.250.125", "6569", "10", "GOR", "DDD");
+            mc.run("SETEM^TEMP", in, null, null);
+            Log.d(LOG_TAG, "Ret: " + mc.outRet);
+            Log.d(LOG_TAG, "Out: " + mc.outArray);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private List<Employee> parseStringsToEmployees(ArrayList<String> strings) {
         List<Employee> employeeList = new ArrayList<>();
         for (String s : strings) {
             String[] str = s.split("\\|");
@@ -318,78 +322,33 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
             Log.i(LOG_TAG, employee.toString());
 
         }
-       // clearEmployees();
-       // loadInSQLite(employeeList);
         return employeeList;
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-            case R.id.upload:
+            case R.id.load:
 
                 new Thread(new Runnable() {
                     @Override
                     public void run() {
-                        upload();
+                        loadOfDB();
                     }
                 }).start();
 
-               // mIntent = new Intent(this, DataService.class);
-               // mServiceConnection = new ServiceConnection() {
-               //     public void onServiceConnected(ComponentName name, IBinder binder) {
-               //         Log.d(LOG_TAG, "onServiceConnected");
-               //         mService = ((DataService.DataBinder) binder).getService();
-               //         mEmployeeList = mService.getmEmployeeList();
-               //         Log.d(LOG_TAG, "mEmpl");
-               //         clearEmployees();
-               //         loadInSQLite(mEmployeeList);
-               //         mBound = true;
-               //     }
-//
-               //     public void onServiceDisconnected(ComponentName name) {
-               //         Log.d(LOG_TAG, "onServiceDisconnected");
-               //         mBound = false;
-               //     }
-               // };
-               // mIntent = new Intent(this, DataService.class);
-              // mServiceConnection = new ServiceConnection() {
-              //     public void onServiceConnected(ComponentName name, IBinder binder) {
-              //         Log.d(LOG_TAG, "onServiceConnected");
-              //         mService = ((DataService.DataBinder) binder).getService();
-              //         mEmployeeList = mService.getmEmployeeList();
-              //         Log.d(LOG_TAG, "mEmpl");
-              //         clearEmployees();
-              //         loadInSQLite(mEmployeeList);
-              //         mBound = true;
-              //     }
-
-              //     public void onServiceDisconnected(ComponentName name) {
-              //         Log.d(LOG_TAG, "onServiceDisconnected");
-              //         mBound = false;
-              //     }
-              // };
-
-             //   startService(mIntent);
-             //   bindService(mIntent, mServiceConnection, 0);
-
                 return true;
 
-            //case R.id.load:
-            //    loadData();
-            //    return true;
+            case R.id.upload:
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        uploadInDB();
+                    }
+                }).start();
+                return true;
         }
         return (super.onOptionsItemSelected(item));
-    }
-
-    private void loadData() {
-        Log.i(LOG_TAG, "load");
-    }
-
-    @Override
-    protected void onNewIntent(Intent intent) {
-        super.onNewIntent(intent);
-        Log.i(LOG_TAG, "onNewIntent");
     }
 
     private void clearEmployees() {
@@ -412,34 +371,6 @@ public class MainActivity extends AppCompatActivity implements ListEmployeeFragm
             long newRowId = db.insert(EmployeeDbContract.TABLE_NAME, null, values);
         }
         displayDatabaseInfo();
-
-      //  this.recreate();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        Log.i(LOG_TAG, "onDestroy");
-       //if (mBound) {
-       //    unbindService(mServiceConnection);
-       //    mBound = false;
-       //}
-    }
-
-    @Override
-    protected void onStart() {
-        Log.i(LOG_TAG, "onDestroy");
-        super.onStart();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        //if (!mBound) {
-        //    bindService(mIntent, mServiceConnection, 0);
-        //    mBound = true;
-        //}
-        Log.i(LOG_TAG, "onResume");
     }
 
     private void showInLogString(String[] strings) {
